@@ -6,6 +6,18 @@ from pydantic import BaseModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from sentence_transformers import SentenceTransformer
 
+
+# 允许跨域请求，不需要可忽略
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # 允许所有网页访问
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 app = FastAPI(title="轻量级企业大模型 RAG 接口")
 
 # ==========================================

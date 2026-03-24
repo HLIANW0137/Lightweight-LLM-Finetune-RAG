@@ -1,6 +1,7 @@
 # Lightweight-LLM-Finetune-RAG
 A Complete Guide to Fine-Tuning and RAG Deployment Based on a Single  GPU
 # 🚀 本地轻量级大模型全链路实战：从微调到 RAG 部署的保姆级指南
+# 自动数据生成（Data Pipeline）详见文件夹scripts
 
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C.svg?style=flat-square&logo=pytorch)](https://pytorch.org/)
 [![LLaMA-Factory](https://img.shields.io/badge/LLaMA--Factory-WebUI-blue?style=flat-square)](https://github.com/hiyouga/LLaMA-Factory)

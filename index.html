@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企业专属 AI 知识库助手</title>
+    
+    <!-- 引入 Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- 引入 Tailwind CSS (包含 Typography 插件用于优雅渲染 Markdown) -->
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    
+    <!-- 引入 FontAwesome 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- 引入 Marked.js 用于解析 Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- 引入 Highlight.js 用于代码高亮 (github-dark 主题) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    
+    <!-- Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // 启用基于 class 的暗黑模式
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#3b82f6', // blue-500
+                        darkBg: '#0f172a',  // slate-900
+                        darkCard: '#1e293b', // slate-800
+                    },
+                    typography: (theme) => ({
+                        DEFAULT: {
+                            css: {
+                                maxWidth: 'none',
+                                p: { marginTop: '0.5em', marginBottom: '0.5em' },
+                                pre: { padding: '1rem', borderRadius: '0.75rem', backgroundColor: '#0d1117' },
+                                code: { backgroundColor: theme('colors.slate.100'), padding: '0.2em 0.4em', borderRadius: '0.25rem', fontWeight: '400' },
+                                'code::before': { content: '""' },
+                                'code::after': { content: '""' },
+                            }
+                        },
+                        invert: {
+                            css: {
+                                code: { backgroundColor: theme('colors.slate.800') },
+                            }
+                        }
+                    })
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* 全局平滑过渡 */
+        body { transition: background-color 0.3s ease, color 0.3s ease; }
+        
+        /* 优雅的滚动条 */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        /* 打字机光标闪烁动画 */
+        .blinking-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 1.2em;
+            background-color: currentColor;
+            vertical-align: middle;
+            margin-left: 4px;
+            animation: blink 1s step-end infinite;
+            border-radius: 2px;
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        /* 完美的 3 个小圆点波浪跳动 Loading 动画 */
+        .wave-loader {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            height: 24px;
+        }
+        .wave-loader .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: currentColor;
+            animation: wave 1.2s linear infinite;
+        }
+        .wave-loader .dot:nth-child(1) { animation-delay: -0.4s; }
+        .wave-loader .dot:nth-child(2) { animation-delay: -0.2s; }
+        .wave-loader .dot:nth-child(3) { animation-delay: 0s; }
+        
+        @keyframes wave {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.6; }
+            30% { transform: translateY(-4px); opacity: 1; }
+        }
+
+        /* 气泡毛玻璃效果基础类 */
+        .glass-panel {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-darkBg h-screen flex flex-col font-sans text-slate-800 dark:text-slate-200 overflow-hidden selection:bg-blue-200 dark:selection:bg-blue-900">
+
+    <!-- 顶部导航栏 -->
+    <header class="glass-panel bg-white/80 dark:bg-darkCard/80 shadow-sm border-b border-slate-200 dark:border-slate-700/50 py-3 px-6 flex items-center justify-between shrink-0 z-20">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+                <i class="fa-solid fa-layer-group text-sm"></i>
+            </div>
+            <div>
+                <h1 class="text-base font-semibold text-slate-800 dark:text-slate-100 tracking-tight">企业专属 AI 知识库</h1>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1.5">
+                    <span class="relative flex h-2 w-2">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    RAG Engine Active
+                </p>
+            </div>
+        </div>
+        
+        <!-- 深色/浅色模式切换按钮 -->
+        <button id="theme-toggle" class="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors focus:outline-none">
+            <i id="theme-icon" class="fa-solid fa-moon text-lg"></i>
+        </button>
+    </header>
+
+    <!-- 聊天记录区 -->
+    <main id="chat-container" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-8 scroll-smooth pb-32">
+        <!-- 初始欢迎消息 -->
+        <div class="flex items-start gap-4 max-w-4xl mx-auto group">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-100 to-blue-50 dark:from-slate-700 dark:to-slate-800 border border-blue-200 dark:border-slate-600 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0 mt-1 shadow-sm">
+                <i class="fa-solid fa-robot text-xs"></i>
+            </div>
+            <div class="glass-panel bg-white/90 dark:bg-darkCard/90 border border-slate-200/60 dark:border-slate-700/60 rounded-2xl rounded-tl-none px-5 py-4 shadow-sm text-sm leading-relaxed text-slate-700 dark:text-slate-300 max-w-[85%]">
+                <p>您好！我是您的 <strong>企业级 RAG 知识库助手</strong>。</p>
+                <p class="mt-2 text-slate-500 dark:text-slate-400">您可以向我提问关于企业规章制度、流程规范、技术文档等问题。我会检索内部知识库，并为您提供精准的解答与原文引用。</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底部输入区 -->
+    <footer class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-slate-50 via-slate-50 to-transparent dark:from-darkBg dark:via-darkBg dark:to-transparent pt-10 pb-6 px-4 shrink-0 z-10">
+        <div class="max-w-4xl mx-auto relative">
+            <div class="relative flex items-end shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-300 dark:border-slate-600 rounded-2xl bg-white dark:bg-darkCard focus-within:ring-2 focus-within:ring-blue-500/30 focus-within:border-blue-500 dark:focus-within:border-blue-500 transition-all overflow-hidden">
+                <textarea 
+                    id="message-input" 
+                    rows="1" 
+                    class="w-full max-h-40 py-4 pl-5 pr-14 bg-transparent border-none focus:ring-0 resize-none outline-none text-[15px] text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 leading-relaxed"
+                    placeholder="向企业知识库提问... (Enter 发送，Shift + Enter 换行)"
+                ></textarea>
+                <button 
+                    id="send-button" 
+                    class="absolute right-3 bottom-3 w-9 h-9 flex items-center justify-center rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-all disabled:opacity-40 disabled:hover:bg-blue-600 disabled:cursor-not-allowed shadow-sm"
+                >
+                    <i class="fa-solid fa-arrow-up text-sm"></i>
+                </button>
+            </div>
+            <div class="text-center mt-3">
+                <p class="text-[11px] text-slate-400 dark:text-slate-500 font-medium">AI 可能会产生误导性信息，请结合引用的来源文档进行核实。</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript 交互逻辑 -->
+    <script>
+        // --- 1. 初始化与主题切换逻辑 ---
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const htmlElement = document.documentElement;
+
+        // 检查本地存储或系统偏好设置主题
+        function initTheme() {
+            if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                htmlElement.classList.add('dark');
+                themeIcon.className = 'fa-solid fa-sun text-lg text-amber-400';
+            } else {
+                htmlElement.classList.remove('dark');
+                themeIcon.className = 'fa-solid fa-moon text-lg text-slate-500';
+            }
+        }
+        initTheme();
+
+        // 切换主题
+        themeToggleBtn.addEventListener('click', () => {
+            htmlElement.classList.toggle('dark');
+            if (htmlElement.classList.contains('dark')) {
+                localStorage.setItem('color-theme', 'dark');
+                themeIcon.className = 'fa-solid fa-sun text-lg text-amber-400';
+            } else {
+                localStorage.setItem('color-theme', 'light');
+                themeIcon.className = 'fa-solid fa-moon text-lg text-slate-500';
+            }
+        });
+
+        // --- 2. Markdown 与 Highlight.js 配置 ---
+        marked.setOptions({
+            breaks: true, // 支持 GitHub 风格换行
+            highlight: function (code, lang) {
+                const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                return hljs.highlight(code, { language }).value;
+            }
+        });
+
+        // --- 3. 聊天核心逻辑 ---
+        const chatContainer = document.getElementById('chat-container');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+
+        // 自动调整输入框高度
+        messageInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight < 160 ? this.scrollHeight : 160) + 'px';
+            sendButton.disabled = this.value.trim() === '';
+        });
+
+        sendButton.disabled = true;
+
+        // 键盘事件
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (messageInput.value.trim() !== '') sendMessage();
+            }
+        });
+
+        sendButton.addEventListener('click', () => {
+            if (messageInput.value.trim() !== '') sendMessage();
+        });
+
+        async function sendMessage() {
+            const query = messageInput.value.trim();
+            if (!query) return;
+
+            // 渲染用户消息
+            appendUserMessage(query);
+
+            // 重置输入框
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            messageInput.disabled = true;
+            sendButton.disabled = true;
+
+            // 渲染 Loading
+            const loadingId = appendLoadingMessage();
+            scrollToBottom();
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query })
+                });
+
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                
+                const data = await response.json();
+                
+                removeMessage(loadingId);
+                // 渲染 AI 消息（带打字机效果和 RAG 引用）
+                appendAIMessage(data.answer, data.retrieved_context);
+
+            } catch (error) {
+                console.error('请求失败:', error);
+                removeMessage(loadingId);
+                appendErrorMessage('网络请求失败，请检查后端服务 (http://127.0.0.1:8000) 是否已启动。');
+            } finally {
+                messageInput.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        // --- 4. UI 渲染函数 ---
+
+        function appendUserMessage(text) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'flex items-start gap-4 max-w-4xl mx-auto flex-row-reverse group';
+            
+            // 纯文本转义
+            const safeText = text.replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag])).replace(/\n/g, '<br>');
+
+            msgDiv.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 shrink-0 mt-1 shadow-sm">
+                    <i class="fa-solid fa-user text-xs"></i>
+                </div>
+                <div class="bg-blue-600 text-white rounded-2xl rounded-tr-none px-5 py-3.5 shadow-md shadow-blue-500/20 text-[15px] leading-relaxed max-w-[85%] break-words">
+                    ${safeText}
+                </div>
+            `;
+            chatContainer.appendChild(msgDiv);
+            scrollToBottom();
+        }
+
+        function appendLoadingMessage() {
+            const id = 'loading-' + Date.now();
+            const msgDiv = document.createElement('div');
+            msgDiv.id = id;
+            msgDiv.className = 'flex items-start gap-4 max-w-4xl mx-auto';
+            
+            msgDiv.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-100 to-blue-50 dark:from-slate-700 dark:to-slate-800 border border-blue-200 dark:border-slate-600 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0 mt-1 shadow-sm">
+                    <i class="fa-solid fa-robot text-xs"></i>
+                </div>
+                <div class="glass-panel bg-white/90 dark:bg-darkCard/90 border border-slate-200/60 dark:border-slate-700/60 rounded-2xl rounded-tl-none px-5 py-4 shadow-sm flex items-center">
+                    <div class="wave-loader text-blue-500 dark:text-blue-400">
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                    </div>
+                </div>
+            `;
+            chatContainer.appendChild(msgDiv);
+            return id;
+        }
+
+        function appendErrorMessage(errorText) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'flex items-start gap-4 max-w-4xl mx-auto';
+            msgDiv.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 flex items-center justify-center text-red-600 dark:text-red-400 shrink-0 mt-1 shadow-sm">
+                    <i class="fa-solid fa-triangle-exclamation text-xs"></i>
+                </div>
+                <div class="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/50 text-red-600 dark:text-red-400 rounded-2xl rounded-tl-none px-5 py-3.5 shadow-sm text-[15px] leading-relaxed max-w-[85%]">
+                    ${errorText}
+                </div>
+            `;
+            chatContainer.appendChild(msgDiv);
+            scrollToBottom();
+        }
+
+        function appendAIMessage(answer, context) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'flex items-start gap-4 max-w-4xl mx-auto group w-full';
+            
+            const contextId = 'context-' + Date.now();
+            const answerId = 'answer-' + Date.now();
+            const copyBtnId = 'copy-' + Date.now();
+
+            // RAG 引用手风琴 HTML (如果存在)
+            let contextHtml = '';
+            if (context) {
+                const safeContext = context.replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag])).replace(/\n/g, '<br>');
+                contextHtml = `
+                <div class="mb-4 border border-slate-200 dark:border-slate-700/80 rounded-xl overflow-hidden bg-slate-50/50 dark:bg-slate-800/30 transition-all">
+                    <button onclick="toggleAccordion('${contextId}')" class="w-full px-4 py-2.5 flex items-center justify-between text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors focus:outline-none">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-book-bookmark text-blue-500 dark:text-blue-400"></i>
+                            <span>查看检索来源 (1)</span>
+                        </div>
+                        <i id="icon-${contextId}" class="fa-solid fa-chevron-down transition-transform duration-300"></i>
+                    </button>
+                    <div id="${contextId}" class="hidden px-4 py-3 text-[13px] text-slate-600 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700/80 bg-white/60 dark:bg-slate-900/40 leading-relaxed max-h-64 overflow-y-auto">
+                        ${safeContext}
+                    </div>
+                </div>
+                `;
+            }
+
+            msgDiv.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-100 to-blue-50 dark:from-slate-700 dark:to-slate-800 border border-blue-200 dark:border-slate-600 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0 mt-1 shadow-sm">
+                    <i class="fa-solid fa-robot text-xs"></i>
+                </div>
+                <div class="flex-1 min-w-0 max-w-[85%] relative">
+                    <div class="glass-panel bg-white/90 dark:bg-darkCard/90 border border-slate-200/60 dark:border-slate-700/60 rounded-2xl rounded-tl-none px-6 py-5 shadow-sm">
+                        
+                        <!-- RAG 引用区域 -->
+                        ${contextHtml}
+                        
+                        <!-- AI 回答 Markdown 渲染区 -->
+                        <div id="${answerId}" class="prose prose-slate dark:prose-invert prose-sm sm:prose-base max-w-none break-words">
+                            <!-- 打字机内容将注入这里 -->
+                        </div>
+                        
+                        <!-- 悬浮复制按钮 -->
+                        <div class="absolute -right-12 bottom-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <button id="${copyBtnId}" class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors focus:outline-none hidden" title="复制回答">
+                                <i class="fa-regular fa-copy text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            chatContainer.appendChild(msgDiv);
+            
+            // 执行打字机效果
+            const answerContainer = document.getElementById(answerId);
+            const copyBtn = document.getElementById(copyBtnId);
+            
+            typeWriterEffect(answerContainer, answer, () => {
+                // 打字结束后显示复制按钮并绑定事件
+                copyBtn.classList.remove('hidden');
+                copyBtn.onclick = () => copyToClipboard(answer, copyBtn);
+            });
+        }
+
+        // --- 5. 辅助交互功能 ---
+
+        // 伪流式打字机效果 (支持 Markdown 解析)
+        function typeWriterEffect(element, fullText, onComplete) {
+            let i = 0;
+            const speed = 15; // 每个 chunk 的间隔毫秒数
+            const chunkSize = 2; // 每次渲染的字符数
+            
+            element.innerHTML = '';
+            
+            const interval = setInterval(() => {
+                const currentText = fullText.substring(0, i + chunkSize);
+                i += chunkSize;
+                
+                // 实时解析 Markdown 并追加闪烁光标
+                element.innerHTML = marked.parse(currentText) + '<span class="blinking-cursor"></span>';
+                
+                // 实时代码高亮
+                element.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightElement(block);
+                });
+                
+                scrollToBottom();
+                
+                if (i >= fullText.length) {
+                    clearInterval(interval);
+                    // 最终渲染（移除光标）
+                    element.innerHTML = marked.parse(fullText);
+                    element.querySelectorAll('pre code').forEach((block) => {
+                        hljs.highlightElement(block);
+                    });
+                    if (onComplete) onComplete();
+                }
+            }, speed);
+        }
+
+        // 手风琴折叠切换
+        window.toggleAccordion = function(id) {
+            const content = document.getElementById(id);
+            const icon = document.getElementById('icon-' + id);
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.style.transform = 'rotate(180deg)';
+            } else {
+                content.classList.add('hidden');
+                icon.style.transform = 'rotate(0deg)';
+            }
+        };
+
+        // 复制到剪贴板
+        async function copyToClipboard(text, btnElement) {
+            try {
+                await navigator.clipboard.writeText(text);
+                const icon = btnElement.querySelector('i');
+                icon.className = 'fa-solid fa-check text-emerald-500';
+                setTimeout(() => {
+                    icon.className = 'fa-regular fa-copy';
+                }, 2000);
+            } catch (err) {
+                console.error('复制失败:', err);
+            }
+        }
+
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    </script>
+</body>
+</html>
